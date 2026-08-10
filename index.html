@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Reddit — Prototipo B (Alta fidelidad)</title>
+<style>
+  :root{
+    --accent:#FF4500;
+    --down:#0079D3;
+    --bg:#ffffff;
+    --bg-2:#f6f7f8;
+    --bg-3:#eef0f2;
+    --text:#1a1a1b;
+    --text-2:#7c7c7c;
+    --border:#e2e4e7;
+    --radius-lg:20px;
+    --radius-md:14px;
+  }
+  body.dark{
+    --bg:#0e0f10; --bg-2:#17181a; --bg-3:#202124;
+    --text:#f1f1f1; --text-2:#a3a3a3; --border:#2a2b2e;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg-3); color:var(--text); transition:background .25s,color .25s;
+  }
+  #phone{
+    max-width:440px; margin:0 auto; min-height:100vh; background:var(--bg);
+    position:relative; display:flex; flex-direction:column; overflow-x:hidden;
+  }
+  @media(min-width:500px){
+    body{padding:24px 0;}
+    #phone{min-height:calc(100vh - 48px); border-radius:34px; box-shadow:0 20px 60px rgba(0,0,0,.25); border:9px solid #111;}
+  }
+
+  /* ---------- generated avatars ---------- */
+  .gen-avatar{border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; flex-shrink:0; user-select:none;}
+
+  /* ---------- status bar ---------- */
+  .statusbar{display:flex; justify-content:space-between; align-items:center; padding:10px 20px 4px; font-size:13px; font-weight:700; background:var(--bg);}
+  .statusbar .sb-icons{display:flex; align-items:center; gap:5px;}
+
+  /* ---------- topbar ---------- */
+  .topbar{position:sticky; top:0; z-index:30; background:var(--bg); padding:8px 14px 10px; display:flex; align-items:center; gap:10px;}
+  .icon-btn{width:36px; height:36px; min-width:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:none; border:none; cursor:pointer; color:var(--text); position:relative;}
+  .icon-btn:active{background:var(--bg-2);}
+  .menu-dot{position:absolute; top:4px; right:4px; width:8px; height:8px; border-radius:50%; background:var(--accent); border:1.5px solid var(--bg);}
+  .searchbar{flex:1; display:flex; align-items:center; gap:9px; background:var(--bg); border:1.6px solid var(--accent); border-radius:999px; padding:8px 12px; cursor:text;}
+  .searchbar input{border:none; outline:none; background:transparent; color:var(--text); font-size:14.5px; width:100%;}
+  .searchbar input::placeholder{color:var(--text-2);}
+  .mic-btn{background:none; border:none; cursor:pointer; color:var(--text); display:flex; align-items:center; flex-shrink:0;}
+
+  /* ---------- screens ---------- */
+  .screen{display:none; padding-bottom:92px; flex:1;}
+  .screen.active{display:block;}
+
+  .section-title{font-size:16px; font-weight:800; padding:16px 16px 10px;}
+  .cat-row{display:flex; gap:8px; padding:2px 14px 6px; overflow-x:auto;}
+  .cat-item{flex:1; min-width:72px; display:flex; flex-direction:column; align-items:center; gap:7px; background:none; border:none; cursor:pointer; color:var(--text); font-size:12px; font-weight:700;}
+  .cat-circle{width:54px; height:54px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition:transform .12s;}
+  .cat-item:active .cat-circle{transform:scale(.92);}
+
+  /* recent searches */
+  .chip-row{display:flex; gap:9px; padding:2px 16px 4px; overflow-x:auto;}
+  .chip{flex-shrink:0; border:1px solid var(--border); background:var(--bg-2); border-radius:999px; padding:8px 16px; font-size:13px; font-weight:600; color:var(--text); cursor:pointer; white-space:nowrap;}
+  .chip:active{background:var(--bg-3);}
+
+  .see-more{color:var(--accent); font-size:12.5px; font-weight:700; text-decoration:none; float:right; margin:16px 16px 0 0;}
+  .carousel{display:flex; gap:12px; overflow-x:auto; padding:2px 16px 16px; scroll-snap-type:x proximity;}
+  .carousel::-webkit-scrollbar{display:none;}
+  .comm-card{scroll-snap-align:start; flex:0 0 118px; border:1px solid var(--border); border-radius:var(--radius-md); padding:14px 8px 12px; display:flex; flex-direction:column; align-items:center; text-align:center; gap:7px; background:var(--bg);}
+  .comm-name{font-size:12.5px; font-weight:700; margin-top:2px;}
+  .comm-members{font-size:10.5px; color:var(--text-2);}
+  .join-btn{margin-top:4px; width:100%; border-radius:999px; border:1.5px solid var(--accent); background:none; color:var(--accent); font-size:12px; font-weight:700; padding:5px 0; cursor:pointer;}
+  .join-btn.joined{background:var(--accent); color:#fff;}
+
+  .divider{height:8px; background:var(--bg-2); border-top:1px solid var(--border); border-bottom:1px solid var(--border);}
+
+  /* ---------- post card ---------- */
+  .post{border-bottom:8px solid var(--bg-2); padding:14px 0 6px;}
+  .post-head{display:flex; align-items:center; gap:9px; padding:0 14px 10px;}
+  .post-head .who{font-size:12.5px; color:var(--text-2); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .post-head .who b{color:var(--text); font-weight:700; font-size:13.5px;}
+  .join-mini{border:1.5px solid var(--accent); color:var(--accent); background:none; border-radius:999px; font-size:11.5px; font-weight:800; padding:3px 12px; cursor:pointer; flex-shrink:0;}
+  .join-mini.joined{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .post-title{font-size:16px; font-weight:700; padding:0 16px 10px; line-height:1.3;}
+  .post-img{margin:0 14px 4px; border-radius:16px; overflow:hidden; background:var(--bg-2); line-height:0;}
+  .post-img svg{width:100%; height:auto; display:block;}
+  .post-actions{display:flex; align-items:center; gap:8px; padding:12px 14px 4px;}
+  .vote-pill{display:flex; align-items:center; gap:2px; border:1.5px solid var(--border); border-radius:999px; padding:2px 4px;}
+  .vote-btn{border:none; background:none; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text);}
+  .vote-btn.up.active{color:var(--accent);}
+  .vote-btn.down.active{color:var(--down);}
+  .vote-count{font-size:13.5px; font-weight:700; min-width:30px; text-align:center;}
+  .out-pill{display:flex; align-items:center; gap:7px; background:var(--bg); border:1.5px solid var(--border); border-radius:999px; padding:8px 16px; cursor:pointer; color:var(--text); font-size:13.5px; font-weight:700;}
+  .out-icon-btn{width:38px; height:38px; border-radius:999px; border:1.5px solid var(--border); background:var(--bg); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text); margin-left:auto;}
+
+  /* comments inline */
+  .comments-box{padding:8px 14px 8px; display:none;}
+  .comments-box.open{display:block;}
+  .comment{display:flex; gap:8px; padding:9px 0; border-top:1px solid var(--border);}
+  .comment .c-user{font-size:12px; font-weight:700; margin-bottom:2px;}
+  .comment .c-text{font-size:13px; color:var(--text); line-height:1.4;}
+  .comment-input-row{display:flex; gap:8px; align-items:center; padding-top:10px;}
+  .comment-input-row input{flex:1; border:1px solid var(--border); background:var(--bg-2); border-radius:999px; padding:8px 14px; font-size:13px; color:var(--text); outline:none;}
+  .comment-send{border:none; background:var(--accent); color:#fff; width:32px; height:32px; border-radius:50%; cursor:pointer;}
+
+  /* ---------- communities screen ---------- */
+  .comm-row{display:flex; align-items:center; gap:12px; padding:11px 16px; border-bottom:1px solid var(--border);}
+  .comm-row .cinfo{flex:1;}
+  .comm-row .cname{font-size:14px; font-weight:700;}
+  .comm-row .cmembers{font-size:12px; color:var(--text-2);}
+
+  /* ---------- messages ---------- */
+  .notif{display:flex; gap:12px; padding:13px 16px; border-bottom:1px solid var(--border); align-items:flex-start;}
+  .notif .nicon{width:38px;height:38px;border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0; color:#fff;}
+  .notif .ntext{font-size:13.5px; line-height:1.4;}
+  .notif .ntime{font-size:11.5px; color:var(--text-2); margin-top:3px;}
+  .notif.unread{background:rgba(255,69,0,0.06);}
+
+  /* ---------- profile ---------- */
+  .profile-head{padding:20px 16px; text-align:center;}
+  .profile-head .gen-avatar{width:84px; height:84px; font-size:30px; margin:0 auto; border:3px solid var(--bg-2);}
+  .profile-head h2{margin:12px 0 2px; font-size:19px;}
+  .profile-head p{margin:0; color:var(--text-2); font-size:13px;}
+  .stat-row{display:flex; justify-content:center; gap:28px; padding:16px 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border); margin-top:14px;}
+  .stat{text-align:center;}
+  .stat b{display:block; font-size:17px;}
+  .stat span{font-size:11.5px; color:var(--text-2);}
+  .settings-row{display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--border);}
+  .settings-row .slabel{font-size:14px; font-weight:600; display:flex; align-items:center; gap:10px;}
+  .switch{width:44px; height:26px; border-radius:20px; background:var(--bg-3); position:relative; cursor:pointer; border:none; flex-shrink:0;}
+  .switch.on{background:var(--accent);}
+  .switch::after{content:''; position:absolute; top:3px; left:3px; width:20px; height:20px; border-radius:50%; background:#fff; transition:left .18s; box-shadow:0 1px 3px rgba(0,0,0,.3);}
+  .switch.on::after{left:21px;}
+
+  /* ---------- search screen ---------- */
+  .tabs{display:flex; gap:6px; padding:10px 16px; border-bottom:1px solid var(--border); overflow-x:auto;}
+  .tab-btn{border:1.5px solid var(--border); background:none; border-radius:999px; padding:7px 14px; font-size:13px; font-weight:700; color:var(--text-2); cursor:pointer; white-space:nowrap; flex-shrink:0;}
+  .tab-btn.active{background:var(--text); color:var(--bg); border-color:var(--text);}
+  .search-result{display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid var(--border);}
+  .search-result .thumb{width:40px;height:40px;border-radius:8px; overflow:hidden; flex-shrink:0; line-height:0;}
+  .search-result .thumb svg{width:100%; height:100%; display:block;}
+  .search-empty{padding:60px 24px; text-align:center; color:var(--text-2); font-size:14px;}
+
+  /* ---------- bottom nav ---------- */
+  .bottomnav{position:fixed; bottom:0; left:0; right:0; max-width:440px; margin:0 auto; background:var(--bg); border-top:1px solid var(--border); display:flex; z-index:40; padding:8px 0 10px;}
+  @media(min-width:500px){.bottomnav{max-width:422px;}}
+  .nav-btn{flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; background:none; border:none; cursor:pointer; color:var(--text); font-size:9.5px; font-weight:700; padding:6px 0 0; position:relative;}
+  .nav-btn .nicon-wrap{position:relative; display:flex; align-items:center; justify-content:center;}
+  .nav-btn.active{color:var(--accent);}
+  .nav-badge{position:absolute; top:-4px; right:-7px; background:var(--accent); color:#fff; font-size:9px; font-weight:800; min-width:15px; height:15px; border-radius:9px; display:flex; align-items:center; justify-content:center; padding:0 3px;}
+
+  /* ---------- overlays ---------- */
+  .overlay{position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:100; display:none; align-items:flex-end; justify-content:center;}
+  .overlay.open{display:flex;}
+  .overlay.center{align-items:center;}
+  .sheet{background:var(--bg); width:100%; max-width:440px; border-radius:20px 20px 0 0; padding:18px 18px 26px; animation:slideUp .22s ease; max-height:82vh; overflow-y:auto;}
+  @keyframes slideUp{from{transform:translateY(30px); opacity:.4;} to{transform:translateY(0); opacity:1;}}
+  .sheet h3{margin:0 0 14px; font-size:16px;}
+  .sheet-option{display:flex; align-items:center; gap:12px; padding:11px 4px; font-size:14.5px; cursor:pointer; border-radius:10px;}
+  .sheet-option:active{background:var(--bg-2);}
+  .close-x{position:absolute; top:14px; right:14px; background:var(--bg-2); border:none; width:30px; height:30px; border-radius:50%; cursor:pointer; font-size:15px;}
+
+  /* drawer */
+  .drawer-overlay{position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:110; display:none;}
+  .drawer-overlay.open{display:block;}
+  .drawer{position:fixed; top:0; left:0; bottom:0; width:78%; max-width:320px; background:var(--bg); z-index:111; transform:translateX(-105%); transition:transform .25s ease; overflow-y:auto; padding-bottom:20px;}
+  .drawer.open{transform:translateX(0);}
+  .drawer-head{padding:20px 16px 14px; display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--border);}
+  .drawer-item{display:flex; align-items:center; gap:14px; padding:12px 16px; font-size:14px; font-weight:600; cursor:pointer;}
+  .drawer-item:active{background:var(--bg-2);}
+  .drawer-item .di-icon{width:22px; text-align:center; font-size:17px;}
+
+  /* create post modal */
+  .field-label{font-size:12px; font-weight:700; color:var(--text-2); margin:14px 0 6px;}
+  select, .ta{width:100%; border:1.5px solid var(--border); border-radius:12px; padding:11px 12px; font-size:14px; background:var(--bg-2); color:var(--text); outline:none; font-family:inherit;}
+  .ta{resize:vertical; min-height:80px;}
+  .primary-btn{width:100%; background:var(--accent); color:#fff; border:none; border-radius:999px; padding:13px 0; font-size:14.5px; font-weight:800; cursor:pointer; margin-top:18px;}
+
+  /* toast */
+  #toast{position:fixed; bottom:98px; left:50%; transform:translateX(-50%) translateY(20px); background:#1a1a1b; color:#fff; padding:11px 20px; border-radius:999px; font-size:13.5px; font-weight:600; z-index:200; opacity:0; pointer-events:none; transition:all .25s ease; white-space:nowrap;}
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  /* post detail screen */
+  #screen-detail{padding-bottom:30px;}
+  .detail-topbar{position:sticky; top:0; background:var(--bg); z-index:30; display:flex; align-items:center; gap:10px; padding:12px 14px; border-bottom:1px solid var(--border);}
+  .detail-topbar h4{margin:0; font-size:15px; font-weight:800;}
+
+  ::-webkit-scrollbar{width:0;}
+</style>
+</head>
+<body>
+<div id="phone">
+
+  <!-- ============ STATUS BAR ============ -->
+  <div class="statusbar" id="statusbar">
+    <span id="clockTime">14:09</span>
+    <div class="sb-icons">
+      <svg width="15" height="11" viewBox="0 0 18 12" fill="currentColor"><path d="M1 10h2v2H1v-2zm4-3h2v5H5V7zm4-3h2v8H9V4zm4-4h2v12h-2V0z"/></svg>
+      <svg width="14" height="11" viewBox="0 0 16 12" fill="currentColor"><path d="M8 11.5a1.5 1.5 0 110-3 1.5 1.5 0 010 3zm-3.8-3.3a5.4 5.4 0 017.6 0l-1.2 1.2a3.7 3.7 0 00-5.2 0L4.2 8.2zm-2.8-2.8a9.3 9.3 0 0113.2 0l-1.2 1.2a7.6 7.6 0 00-10.8 0L1.4 5.4z"/></svg>
+      <svg width="20" height="11" viewBox="0 0 22 12" fill="none"><rect x="1" y="1" width="17" height="10" rx="2.5" stroke="currentColor" stroke-width="1.4"/><rect x="3" y="3" width="12" height="6" rx="1" fill="currentColor"/><path d="M20 4.2v3.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+    </div>
+  </div>
+
+  <!-- ============ TOPBAR ============ -->
+  <div class="topbar" id="topbar">
+    <button class="icon-btn" data-action="open-drawer" id="hamburgerBtn">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      <span class="menu-dot" id="menuDot"></span>
+    </button>
+    <div class="searchbar" id="searchbarEl">
+      <div data-action="go-search" style="display:flex; align-items:center; gap:9px; flex:1;">
+        <svg width="24" height="24" viewBox="0 0 40 40" style="flex-shrink:0;"><circle cx="20" cy="20" r="20" fill="#FF4500"/><circle cx="14" cy="19" r="2.6" fill="#fff"/><circle cx="26" cy="19" r="2.6" fill="#fff"/><path d="M13 25c2.2 2 5 3 7 3s4.8-1 7-3" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/><line x1="20" y1="11" x2="20" y2="15" stroke="#fff" stroke-width="2"/><circle cx="20" cy="9" r="2.1" fill="#fff"/></svg>
+        <input id="searchInput" placeholder="Busca lo que quieras" readonly>
+      </div>
+      <button class="mic-btn" data-action="mic-search" aria-label="Búsqueda por voz">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- ============ HOME / DISCOVER SCREEN ============ -->
+  <div class="screen active" id="screen-home">
+    <div class="section-title">Buscar por tipo</div>
+    <div class="cat-row">
+      <button class="cat-item" data-action="search-tab" data-tab="comunidades">
+        <div class="cat-circle" style="background:var(--accent);">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        Comunidades
+      </button>
+      <button class="cat-item" data-action="search-tab" data-tab="publicaciones">
+        <div class="cat-circle" style="background:#2f7ff2;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
+        </div>
+        Publicaciones
+      </button>
+      <button class="cat-item" data-action="search-tab" data-tab="usuarios">
+        <div class="cat-circle" style="background:#cddc39;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1a1a1b" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        Usuarios
+      </button>
+      <button class="cat-item" data-action="search-tab" data-tab="temas">
+        <div class="cat-circle" style="background:#8e44ad;">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        </div>
+        Temas
+      </button>
+    </div>
+
+    <div class="section-title" style="padding-bottom:6px;">Búsquedas recientes</div>
+    <div class="chip-row" id="recentChips"></div>
+
+    <div style="display:flex; align-items:center; padding-right:16px;">
+      <div class="section-title" style="flex:1;">Comunidades recomendadas</div>
+      <a class="see-more" href="#" data-action="go-communities">Ver más</a>
+    </div>
+    <div class="carousel" id="commCarousel"></div>
+
+    <div class="divider"></div>
+
+    <div id="feedList"></div>
+  </div>
+
+  <!-- ============ SEARCH SCREEN ============ -->
+  <div class="screen" id="screen-search">
+    <div class="tabs" id="searchTabs">
+      <button class="tab-btn" data-action="search-tab" data-tab="comunidades">Comunidades</button>
+      <button class="tab-btn" data-action="search-tab" data-tab="publicaciones">Publicaciones</button>
+      <button class="tab-btn" data-action="search-tab" data-tab="usuarios">Usuarios</button>
+      <button class="tab-btn" data-action="search-tab" data-tab="temas">Temas</button>
+    </div>
+    <div id="searchResults"></div>
+  </div>
+
+  <!-- ============ COMMUNITIES SCREEN ============ -->
+  <div class="screen" id="screen-communities">
+    <div class="section-title">Tus comunidades</div>
+    <div id="joinedList"></div>
+    <div class="divider"></div>
+    <div class="section-title">Descubrir más</div>
+    <div id="discoverList"></div>
+  </div>
+
+  <!-- ============ MESSAGES SCREEN ============ -->
+  <div class="screen" id="screen-messages">
+    <div class="section-title">Mensajes</div>
+    <div id="notifList"></div>
+  </div>
+
+  <!-- ============ PROFILE SCREEN ============ -->
+  <div class="screen" id="screen-profile">
+    <div class="profile-head">
+      <div id="profileAvatarSlot"></div>
+      <h2>u/TuUsuario</h2>
+      <p>Miembro desde 2021</p>
+    </div>
+    <div class="stat-row">
+      <div class="stat"><b>2.4k</b><span>Karma post</span></div>
+      <div class="stat"><b>891</b><span>Karma coment.</span></div>
+      <div class="stat"><b id="joinedCountStat">4</b><span>Comunidades</span></div>
+    </div>
+    <div class="settings-row">
+      <span class="slabel">🌙 Modo oscuro</span>
+      <button class="switch" id="darkSwitch" data-action="toggle-dark"></button>
+    </div>
+    <div class="settings-row"><span class="slabel">🔔 Notificaciones push</span><button class="switch on" data-action="noop-switch"></button></div>
+    <div class="settings-row"><span class="slabel">🔒 Cuenta privada</span><button class="switch" data-action="noop-switch"></button></div>
+    <div class="settings-row" data-action="logout-toast"><span class="slabel">🚪 Cerrar sesión</span><span style="color:var(--text-2)">›</span></div>
+  </div>
+
+  <!-- ============ POST DETAIL SCREEN ============ -->
+  <div class="screen" id="screen-detail">
+    <div class="detail-topbar">
+      <button class="icon-btn" data-action="back-home">←</button>
+      <h4>Publicación</h4>
+    </div>
+    <div id="detailContent"></div>
+  </div>
+
+  <!-- ============ BOTTOM NAV ============ -->
+  <div class="bottomnav">
+    <button class="nav-btn active" data-action="nav" data-screen="home">
+      <span class="nicon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg></span>Inicio
+    </button>
+    <button class="nav-btn" data-action="nav" data-screen="communities">
+      <span class="nicon-wrap"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><circle cx="9" cy="7" r="4"/><path d="M17 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M1 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"/></svg></span>Comunidad
+    </button>
+    <button class="nav-btn" data-action="open-create">
+      <span class="nicon-wrap"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>Crear
+    </button>
+    <button class="nav-btn" data-action="nav" data-screen="messages">
+      <span class="nicon-wrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="nav-badge" id="navBadge">3</span></span>Mensajes
+    </button>
+    <button class="nav-btn" data-action="nav" data-screen="profile">
+      <span class="nicon-wrap"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/><path d="M7 18a5 5 0 0 1 10 0"/></svg></span>Tú
+    </button>
+  </div>
+</div>
+
+<!-- ===== DRAWER ===== -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="if(event.target===this) closeDrawer();">
+  <div class="drawer" id="drawer">
+    <div class="drawer-head">
+      <div id="drawerAvatarSlot"></div>
+      <div><b>u/TuUsuario</b><br><span style="font-size:12px;color:var(--text-2)">Ver perfil</span></div>
+    </div>
+    <div class="drawer-item" data-action="nav-drawer" data-screen="home"><span class="di-icon">🏠</span>Inicio</div>
+    <div class="drawer-item" data-action="popular-toast"><span class="di-icon">🔥</span>Popular</div>
+    <div class="drawer-item" data-action="explore-toast"><span class="di-icon">🧭</span>Explorar</div>
+    <div class="drawer-item" data-action="nav-drawer" data-screen="communities"><span class="di-icon">👥</span>Comunidades</div>
+    <div style="height:8px;background:var(--bg-2);margin:6px 0;"></div>
+    <div style="padding:8px 16px;font-size:12px;font-weight:700;color:var(--text-2);">TUS COMUNIDADES</div>
+    <div id="drawerCommList"></div>
+    <div style="height:8px;background:var(--bg-2);margin:6px 0;"></div>
+    <div class="drawer-item" data-action="toggle-dark"><span class="di-icon">🌙</span>Modo oscuro</div>
+    <div class="drawer-item" data-action="nav-drawer" data-screen="profile"><span class="di-icon">⚙️</span>Configuración</div>
+  </div>
+</div>
+
+<!-- ===== POST OPTIONS SHEET ===== -->
+<div class="overlay" id="postOptionsOverlay" onclick="if(event.target===this) closeOverlays();">
+  <div class="sheet">
+    <h3>Opciones de la publicación</h3>
+    <div class="sheet-option" data-action="toggle-save-from-options">🔖 Guardar / quitar de guardados</div>
+    <div class="sheet-option" data-action="hide-post-from-options">🗑️ Eliminar publicación</div>
+    <div class="sheet-option" data-action="report-post-from-options">🚩 Reportar</div>
+    <div class="sheet-option" data-action="close-overlays">✕ Cancelar</div>
+  </div>
+</div>
+
+<!-- ===== SHARE SHEET ===== -->
+<div class="overlay" id="shareOverlay" onclick="if(event.target===this) closeOverlays();">
+  <div class="sheet">
+    <h3>Compartir publicación</h3>
+    <div class="sheet-option" data-action="copy-link">📋 Copiar enlace</div>
+    <div class="sheet-option" data-action="share-generic">💬 Enviar por mensaje</div>
+    <div class="sheet-option" data-action="share-generic">📧 Enviar por correo</div>
+    <div class="sheet-option" data-action="close-overlays">✕ Cancelar</div>
+  </div>
+</div>
+
+<!-- ===== CREATE POST MODAL ===== -->
+<div class="overlay center" id="createOverlay" onclick="if(event.target===this) closeOverlays();">
+  <div class="sheet" style="border-radius:20px; position:relative; max-width:400px; width:90%;">
+    <button class="close-x" data-action="close-overlays">✕</button>
+    <h3>Crear publicación</h3>
+    <div class="field-label">COMUNIDAD</div>
+    <input class="ta" style="min-height:auto;" id="newPostCommInput" list="communityDatalist" placeholder="Escribe una comunidad (ej. r/forests)">
+    <datalist id="communityDatalist"></datalist>
+    <div class="field-label">TÍTULO</div>
+    <input class="ta" style="min-height:auto;" id="newPostTitle" placeholder="Un título llamativo...">
+    <div class="field-label">TEXTO (opcional)</div>
+    <textarea class="ta" id="newPostBody" placeholder="Comparte más detalles..."></textarea>
+    <button class="primary-btn" data-action="publish-post">Publicar</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ============================= AVATAR + ILLUSTRATION GENERATORS (100% local) ============================= */
+const PALETTE = ['#FF4500','#0079d3','#2ecc71','#8e44ad','#e64980','#00b8a9','#f2994a','#576ce4'];
+function hashStr(s){ let h=0; for(let i=0;i<s.length;i++){ h = s.charCodeAt(i) + ((h<<5)-h); h|=0; } return Math.abs(h); }
+function initialsFor(name){
+  let n = name.replace(/^[ur]\//,'');
+  const parts = n.split(/(?=[A-Z])|_/).filter(Boolean);
+  if(parts.length>=2) return (parts[0][0]+parts[1][0]).toUpperCase();
+  return n.substring(0,2).toUpperCase();
+}
+function avatarHTML(name, size){
+  const color = PALETTE[hashStr(name) % PALETTE.length];
+  const fs = Math.round(size*0.4);
+  return `<div class="gen-avatar" style="width:${size}px;height:${size}px;background:${color};font-size:${fs}px;">${initialsFor(name)}</div>`;
+}
+
+/* themed circular icon per community id */
+function communityIcon(id, size){
+  const s = size;
+  const icons = {
+    forests: `<circle cx="20" cy="20" r="20" fill="#2f6b46"/><polygon points="20,7 27,19 13,19" fill="#fff"/><polygon points="20,13 26,24 14,24" fill="#fff"/><rect x="18.5" y="24" width="3" height="6" fill="#fff"/>`,
+    flowers: `<circle cx="20" cy="20" r="20" fill="#ffe3ea"/><g fill="#ff6b8a"><ellipse cx="20" cy="12" rx="6" ry="8"/><ellipse cx="20" cy="12" rx="6" ry="8" transform="rotate(72 20 20)"/><ellipse cx="20" cy="12" rx="6" ry="8" transform="rotate(144 20 20)"/><ellipse cx="20" cy="12" rx="6" ry="8" transform="rotate(216 20 20)"/><ellipse cx="20" cy="12" rx="6" ry="8" transform="rotate(288 20 20)"/></g><circle cx="20" cy="20" r="4.5" fill="#ffc233"/>`,
+    medicine: `<circle cx="20" cy="20" r="20" fill="#4fa8e0"/><rect x="17" y="10" width="6" height="20" rx="2" fill="#fff"/><rect x="10" y="17" width="20" height="6" rx="2" fill="#fff"/>`,
+    soccer: `<circle cx="20" cy="20" r="20" fill="#2e7d32"/><circle cx="20" cy="20" r="10" fill="#fff"/><polygon points="20,13 25,17 23,23 17,23 15,17" fill="#1a1a1b"/>`,
+    nature: `<circle cx="20" cy="20" r="20" fill="#1f8a5f"/><path d="M20 8c8 4 8 14 0 24-8-10-8-20 0-24z" fill="#fff"/><line x1="20" y1="14" x2="20" y2="30" stroke="#1f8a5f" stroke-width="1.6"/>`,
+    hiking: `<circle cx="20" cy="20" r="20" fill="#a15c2b"/><polygon points="8,29 17,14 22,22 26,16 33,29" fill="#fff"/>`,
+    earthporn: `<circle cx="20" cy="20" r="20" fill="#3d6b8f"/><circle cx="28" cy="12" r="4" fill="#ffd166"/><polygon points="6,30 15,16 21,24 26,17 35,30" fill="#fff"/>`,
+    camping: `<circle cx="20" cy="20" r="20" fill="#c96a2c"/><polygon points="20,10 30,30 10,30" fill="#fff"/><polygon points="20,10 24,30 16,30" fill="#e8b98a"/>`,
+  };
+  const inner = icons[id] || `<circle cx="20" cy="20" r="20" fill="${PALETTE[hashStr(id)%PALETTE.length]}"/><text x="20" y="26" font-size="16" font-weight="800" fill="#fff" text-anchor="middle" font-family="sans-serif">${(id[0]||'r').toUpperCase()}</text>`;
+  return `<svg width="${s}" height="${s}" viewBox="0 0 40 40" style="border-radius:50%; flex-shrink:0;">${inner}</svg>`;
+}
+
+/* full-size post illustrations */
+function illustration(type){
+  if(type==='forest') return `
+  <svg viewBox="0 0 800 460" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="foSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#cfe9e6"/><stop offset="1" stop-color="#eef7f2"/></linearGradient></defs>
+    <rect width="800" height="460" fill="url(#foSky)"/>
+    <g opacity="0.35" fill="#5c8f7a"><polygon points="-20,390 60,240 140,390"/><polygon points="60,400 160,220 260,400"/><polygon points="220,390 300,250 380,390"/><polygon points="360,405 460,210 560,405"/><polygon points="520,390 600,240 680,390"/><polygon points="660,400 760,230 860,400"/></g>
+    <g opacity="0.65" fill="#3f6e58"><polygon points="20,430 110,250 200,430"/><polygon points="180,440 290,230 400,440"/><polygon points="360,430 450,260 540,430"/><polygon points="520,440 630,235 740,440"/></g>
+    <g fill="#1f4536"><polygon points="100,460 200,280 300,460"/><polygon points="280,460 400,260 520,460"/><polygon points="480,460 600,280 720,460"/></g>
+    <rect x="0" y="0" width="800" height="460" fill="#eafaf3" opacity="0.18"/>
+  </svg>`;
+  if(type==='flower') return `
+  <svg viewBox="0 0 800 460" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="gfBg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eafbea"/><stop offset="1" stop-color="#cdeecb"/></linearGradient><radialGradient id="gfPetal" cx="50%" cy="35%" r="70%"><stop offset="0" stop-color="#ff6b4a"/><stop offset="1" stop-color="#e0301e"/></radialGradient></defs>
+    <rect width="800" height="460" fill="url(#gfBg)"/>
+    <g transform="translate(400,250)"><g fill="url(#gfPetal)"><ellipse rx="90" ry="140" transform="rotate(0)"/><ellipse rx="90" ry="140" transform="rotate(51)"/><ellipse rx="90" ry="140" transform="rotate(102)"/><ellipse rx="90" ry="140" transform="rotate(153)"/><ellipse rx="90" ry="140" transform="rotate(204)"/><ellipse rx="90" ry="140" transform="rotate(255)"/><ellipse rx="90" ry="140" transform="rotate(306)"/></g><circle r="44" fill="#ffb238"/></g>
+  </svg>`;
+  if(type==='mountain') return `
+  <svg viewBox="0 0 800 460" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="mSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb37a"/><stop offset="0.55" stop-color="#ff9d63"/><stop offset="1" stop-color="#fef6e4"/></linearGradient></defs>
+    <rect width="800" height="460" fill="url(#mSky)"/>
+    <circle cx="620" cy="110" r="50" fill="#fff3d6" opacity="0.9"/>
+    <polygon points="0,390 180,170 340,390" fill="#5b6b8c"/><polygon points="260,390 460,110 660,390" fill="#3f4d6b"/><polygon points="480,390 650,210 820,390" fill="#5b6b8c"/>
+    <rect x="0" y="385" width="800" height="75" fill="#77c17a"/>
+  </svg>`;
+  if(type==='soccer') return `
+  <svg viewBox="0 0 800 460" xmlns="http://www.w3.org/2000/svg">
+    <rect width="800" height="460" fill="#3fa34d"/>
+    <g opacity="0.25" stroke="#fff" stroke-width="4"><line x1="0" y1="80" x2="800" y2="80"/><line x1="0" y1="160" x2="800" y2="160"/><line x1="0" y1="240" x2="800" y2="240"/><line x1="0" y1="320" x2="800" y2="320"/><line x1="0" y1="400" x2="800" y2="400"/></g>
+    <circle cx="400" cy="260" r="60" fill="#fff"/>
+    <polygon points="400,220 430,244 418,278 382,278 370,244" fill="#1a1a1b"/>
+  </svg>`;
+  if(type==='medicine') return `
+  <svg viewBox="0 0 800 460" xmlns="http://www.w3.org/2000/svg">
+    <rect width="800" height="460" fill="#e8f4fb"/>
+    <circle cx="400" cy="200" r="90" fill="#4fa8e0"/>
+    <rect x="376" y="150" width="48" height="100" rx="10" fill="#fff"/><rect x="350" y="176" width="100" height="48" rx="10" fill="#fff"/>
+    <rect x="0" y="340" width="800" height="120" fill="#c7e6f7"/>
+  </svg>`;
+  return `
+  <svg viewBox="0 0 800 460" xmlns="http://www.w3.org/2000/svg">
+    <defs><linearGradient id="uBg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffd8c2"/><stop offset="1" stop-color="#ffb199"/></linearGradient></defs>
+    <rect width="800" height="460" fill="url(#uBg)"/>
+    <circle cx="400" cy="220" r="66" fill="#ffffff" opacity="0.85"/>
+    <path d="M372 220 l18 -26 l18 26 z" fill="#FF4500"/><circle cx="400" cy="208" r="9" fill="#FF4500"/>
+    <text x="400" y="300" font-family="sans-serif" font-size="19" fill="#ffffff" text-anchor="middle" font-weight="700">Tu foto aquí</text>
+  </svg>`;
+}
+
+/* ============================= DATA ============================= */
+let state = {
+  dark:false, screen:'home', searchTab:'comunidades', searchQuery:'',
+  unread:3, joined:new Set(['forests']), detailPostId:null, menuNotif:true,
+  recentSearches:['Roses','Forest','Travel','Ecuador'],
+};
+
+let communities = [
+  {id:'forests', name:'r/forests', members:'328k miembros'},
+  {id:'flowers', name:'r/flowers', members:'1.2M miembros'},
+  {id:'medicine', name:'r/medicine', members:'3.5M miembros'},
+  {id:'soccer', name:'r/soccer', members:'5.8M miembros'},
+  {id:'nature', name:'r/nature', members:'1.2M miembros'},
+  {id:'hiking', name:'r/hiking', members:'531k miembros'},
+  {id:'earthporn', name:'r/earthporn', members:'2.6M miembros'},
+  {id:'camping', name:'r/camping', members:'210k miembros'},
+];
+
+let posts = [
+  {
+    id:1, comm:'forests', user:'u/PetalPeter', time:'1 d', title:'Nature pretty (oc)',
+    imgType:'forest', votes:346, myVote:0, saved:false, commentsCount:87,
+    comments:[
+      {user:'u/GreenThumb99', text:'¡Qué foto tan brutal, esos tonos de verde!'},
+      {user:'u/Marisol_G', text:'Se ve como sacado de una película 😍'},
+    ]
+  },
+  {
+    id:2, comm:'flowers', user:'u/PetalPeter', time:'2 d', title:'Giant Red Flower en mi jardín',
+    imgType:'flower', votes:512, myVote:0, saved:false, commentsCount:64,
+    comments:[{user:'u/GreenThumb99', text:'¿Qué variedad es? Los colores son increíbles'}]
+  },
+  {
+    id:3, comm:'hiking', user:'u/TrailBlazerAna', time:'3 h', title:'Vista increíble llegando a la cima esta mañana',
+    imgType:'mountain', votes:1204, myVote:0, saved:false, commentsCount:53,
+    comments:[{user:'u/CamperCarlos', text:'¿Cuántas horas de subida fueron?'}]
+  },
+  {
+    id:4, comm:'soccer', user:'u/GoalMachine', time:'5 h', title:'El golazo del fin de semana ⚽',
+    imgType:'soccer', votes:2870, myVote:0, saved:false, commentsCount:210,
+    comments:[{user:'u/Laura_V', text:'Ese remate fue una obra de arte'}]
+  },
+];
+
+let notifications = [
+  {icon:'⬆️', color:'#FF4500', text:'<b>u/GreenThumb99</b> le dio upvote a tu publicación en r/forests', time:'hace 12 min', unread:true},
+  {icon:'💬', color:'#0079d3', text:'<b>u/Marisol_G</b> comentó en tu publicación "Nature pretty (oc)"', time:'hace 40 min', unread:true},
+  {icon:'👥', color:'#2ecc71', text:'r/soccer está en tendencia hoy, revisa lo nuevo', time:'hace 2 h', unread:true},
+  {icon:'🎉', color:'#8e44ad', text:'Alcanzaste 2,000 karma de publicaciones. ¡Felicidades!', time:'hace 1 d', unread:false},
+];
+
+let postIdCounter = 5;
+
+/* ============================= HELPERS ============================= */
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(window.__toastTimer);
+  window.__toastTimer = setTimeout(()=>t.classList.remove('show'), 1800);
+}
+function commName(id){ const c = communities.find(c=>c.id===id); return c ? c.name : id; }
+
+/* ============================= RENDER: RECENT SEARCHES ============================= */
+function renderRecentChips(){
+  document.getElementById('recentChips').innerHTML = state.recentSearches.map(q=>`
+    <button class="chip" data-action="use-recent" data-q="${q}">${q}</button>
+  `).join('') || `<span style="color:var(--text-2); font-size:13px; padding:4px 0;">Aún no hay búsquedas</span>`;
+}
+
+/* ============================= RENDER: CAROUSEL ============================= */
+function renderCarousel(){
+  const top4 = communities.slice(0,4);
+  document.getElementById('commCarousel').innerHTML = top4.map(c=>`
+    <div class="comm-card">
+      ${communityIcon(c.id, 52)}
+      <div class="comm-name">${c.name}</div>
+      <div class="comm-members">${c.members}</div>
+      <button class="join-btn ${state.joined.has(c.id)?'joined':''}" data-action="toggle-join" data-id="${c.id}">
+        ${state.joined.has(c.id)?'Unido ✓':'Unirse'}
+      </button>
+    </div>
+  `).join('');
+}
+
+/* ============================= RENDER: POST CARD ============================= */
+function postCardHTML(p, expanded){
+  const scoreDisplay = p.votes >= 1000 ? (p.votes/1000).toFixed(1).replace('.0','')+'k' : p.votes;
+  const cCount = p.commentsCount + (p.comments.length - (p._baseLen||p.comments.length));
+  return `
+    <div class="post" data-id="${p.id}">
+      <div class="post-head">
+        ${communityIcon(p.comm, 34)}
+        <div class="who"><b>${commName(p.comm)}</b><br>${p.time}</div>
+        <button class="join-mini ${state.joined.has(p.comm)?'joined':''}" data-action="toggle-join" data-id="${p.comm}">
+          ${state.joined.has(p.comm)?'Unido':'Unirse'}
+        </button>
+        <button class="icon-btn" style="width:28px;height:28px;min-width:28px;" data-action="open-post-options" data-id="${p.id}">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+        </button>
+      </div>
+      <div class="post-title">${p.title}</div>
+      <div class="post-img">${illustration(p.imgType)}</div>
+      <div class="post-actions">
+        <div class="vote-pill">
+          <button class="vote-btn up ${p.myVote===1?'active':''}" data-action="vote" data-id="${p.id}" data-dir="1">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+          </button>
+          <span class="vote-count">${scoreDisplay}</span>
+          <button class="vote-btn down ${p.myVote===-1?'active':''}" data-action="vote" data-id="${p.id}" data-dir="-1">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </button>
+        </div>
+        <button class="out-pill" data-action="${expanded?'toggle-inline-comments':'open-detail'}" data-id="${p.id}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          ${p.commentsCount}
+        </button>
+        <button class="out-icon-btn" data-action="share" data-id="${p.id}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        </button>
+      </div>
+      ${expanded ? `
+      <div class="comments-box open" id="comments-${p.id}">
+        ${p.comments.map(c=>`
+          <div class="comment">
+            ${avatarHTML(c.user, 24)}
+            <div><div class="c-user">${c.user}</div><div class="c-text">${c.text}</div></div>
+          </div>
+        `).join('') || `<div style="padding:14px 0; color:var(--text-2); font-size:13px;">Aún no hay comentarios. ¡Sé el primero!</div>`}
+        <div class="comment-input-row">
+          ${avatarHTML('u/TuUsuario', 26)}
+          <input placeholder="Añade un comentario..." data-comment-input="${p.id}" onkeydown="if(event.key==='Enter')addComment(${p.id})">
+          <button class="comment-send" onclick="addComment(${p.id})">➤</button>
+        </div>
+      </div>` : ''}
+    </div>
+  `;
+}
+
+function renderFeed(){
+  document.getElementById('feedList').innerHTML = posts.map(p=>postCardHTML(p,false)).join('');
+}
+
+/* ============================= RENDER: SEARCH ============================= */
+function renderSearch(){
+  document.querySelectorAll('#searchTabs .tab-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.tab === state.searchTab);
+  });
+  const q = state.searchQuery.trim().toLowerCase();
+  const box = document.getElementById('searchResults');
+  let html = '';
+
+  if(state.searchTab === 'comunidades'){
+    const list = communities.filter(c=> !q || c.name.toLowerCase().includes(q));
+    html = list.map(c=>`
+      <div class="search-result">
+        ${communityIcon(c.id, 40)}
+        <div style="flex:1;">
+          <div style="font-weight:700; font-size:14px;">${c.name}</div>
+          <div style="font-size:12px; color:var(--text-2);">${c.members}</div>
+        </div>
+        <button class="join-mini ${state.joined.has(c.id)?'joined':''}" data-action="toggle-join" data-id="${c.id}">
+          ${state.joined.has(c.id)?'Unido':'Unirse'}
+        </button>
+      </div>
+    `).join('') || `<div class="search-empty">No encontramos comunidades para "${state.searchQuery}"</div>`;
+  } else if(state.searchTab === 'publicaciones'){
+    const list = posts.filter(p=> !q || p.title.toLowerCase().includes(q) || commName(p.comm).toLowerCase().includes(q));
+    html = list.map(p=>`
+      <div class="search-result" data-action="open-detail" data-id="${p.id}" style="cursor:pointer;">
+        <div class="thumb">${illustration(p.imgType)}</div>
+        <div style="flex:1;">
+          <div style="font-weight:700; font-size:13.5px;">${p.title}</div>
+          <div style="font-size:12px; color:var(--text-2);">${commName(p.comm)} · ${p.votes} votos</div>
+        </div>
+      </div>
+    `).join('') || `<div class="search-empty">No encontramos publicaciones para "${state.searchQuery}"</div>`;
+  } else if(state.searchTab === 'usuarios'){
+    const mockUsers = ['u/PetalPeter','u/TrailBlazerAna','u/GoalMachine','u/GreenThumb99','u/Marisol_G'];
+    const list = mockUsers.filter(u=> !q || u.toLowerCase().includes(q));
+    html = list.map((u,i)=>`
+      <div class="search-result">
+        ${avatarHTML(u, 40)}
+        <div style="flex:1;">
+          <div style="font-weight:700; font-size:14px;">${u}</div>
+          <div style="font-size:12px; color:var(--text-2);">${(i+1)*312} karma</div>
+        </div>
+        <button class="join-mini">Seguir</button>
+      </div>
+    `).join('') || `<div class="search-empty">No encontramos usuarios para "${state.searchQuery}"</div>`;
+  } else if(state.searchTab === 'temas'){
+    const topics = ['Naturaleza','Senderismo','Jardinería','Fotografía','Vida silvestre','Viajes','Fútbol','Medicina'];
+    const list = topics.filter(t=> !q || t.toLowerCase().includes(q));
+    html = `<div style="display:flex; flex-wrap:wrap; gap:10px; padding:14px 16px;">` +
+      list.map(t=>`<div style="padding:9px 16px; border:1.5px solid var(--border); border-radius:999px; font-size:13px; font-weight:700; cursor:pointer;" data-action="topic-toast">🏷️ ${t}</div>`).join('') +
+      `</div>`;
+    if(!list.length) html = `<div class="search-empty">No encontramos temas para "${state.searchQuery}"</div>`;
+  }
+  box.innerHTML = html;
+}
+
+/* ============================= RENDER: COMMUNITIES SCREEN ============================= */
+function renderCommunitiesScreen(){
+  const joined = communities.filter(c=>state.joined.has(c.id));
+  const discover = communities.filter(c=>!state.joined.has(c.id));
+  document.getElementById('joinedList').innerHTML = joined.map(c=>`
+    <div class="comm-row">
+      ${communityIcon(c.id, 40)}
+      <div class="cinfo"><div class="cname">${c.name}</div><div class="cmembers">${c.members}</div></div>
+      <button class="join-mini joined" data-action="toggle-join" data-id="${c.id}">Unido</button>
+    </div>
+  `).join('') || `<div class="search-empty">Aún no te has unido a ninguna comunidad</div>`;
+
+  document.getElementById('discoverList').innerHTML = discover.map(c=>`
+    <div class="comm-row">
+      ${communityIcon(c.id, 40)}
+      <div class="cinfo"><div class="cname">${c.name}</div><div class="cmembers">${c.members}</div></div>
+      <button class="join-mini" data-action="toggle-join" data-id="${c.id}">Unirse</button>
+    </div>
+  `).join('');
+
+  document.getElementById('joinedCountStat').textContent = state.joined.size;
+}
+
+/* ============================= RENDER: DRAWER COMMUNITIES ============================= */
+function renderDrawerComm(){
+  const joined = communities.filter(c=>state.joined.has(c.id));
+  document.getElementById('drawerCommList').innerHTML = joined.map(c=>`
+    <div class="drawer-item" data-action="nav-drawer" data-screen="home">
+      ${communityIcon(c.id, 22)}
+      ${c.name}
+    </div>
+  `).join('') || `<div style="padding:6px 16px; font-size:13px; color:var(--text-2);">Ninguna todavía</div>`;
+}
+
+/* ============================= RENDER: MESSAGES ============================= */
+function renderMessages(){
+  document.getElementById('notifList').innerHTML = notifications.map(n=>`
+    <div class="notif ${n.unread?'unread':''}">
+      <div class="nicon" style="background:${n.color};">${n.icon}</div>
+      <div><div class="ntext">${n.text}</div><div class="ntime">${n.time}</div></div>
+    </div>
+  `).join('');
+}
+
+/* ============================= RENDER: CREATE POST COMMUNITY FIELD ============================= */
+function renderNewPostSelect(){
+  document.getElementById('communityDatalist').innerHTML = communities.map(c=>`<option value="${c.name}">`).join('');
+  const input = document.getElementById('newPostCommInput');
+  if(!input.value){
+    const joined = communities.filter(c=>state.joined.has(c.id));
+    input.value = (joined[0] || communities[0]).name;
+  }
+}
+
+/* Resolves whatever the person typed into an existing or brand-new community */
+function resolveCommunity(text){
+  let raw = text.trim();
+  if(!raw) return null;
+  if(!raw.toLowerCase().startsWith('r/')) raw = 'r/' + raw;
+  const existing = communities.find(c=>c.name.toLowerCase() === raw.toLowerCase());
+  if(existing) return existing;
+  let id = raw.slice(2).toLowerCase().replace(/[^a-z0-9]+/g,'');
+  if(!id) id = 'comunidad' + Date.now();
+  const created = {id, name:raw, members:'Comunidad nueva'};
+  communities.push(created);
+  state.joined.add(id);
+  return created;
+}
+
+/* ============================= RENDER: DARK SWITCH ============================= */
+function renderDarkSwitch(){
+  document.getElementById('darkSwitch').classList.toggle('on', state.dark);
+  document.body.classList.toggle('dark', state.dark);
+}
+
+/* ============================= RENDER: MENU DOT ============================= */
+function renderMenuDot(){
+  document.getElementById('menuDot').style.display = state.menuNotif ? 'block' : 'none';
+}
+
+/* ============================= RENDER: POST DETAIL ============================= */
+function renderDetail(){
+  const p = posts.find(p=>p.id===state.detailPostId);
+  if(!p){ document.getElementById('detailContent').innerHTML=''; return; }
+  document.getElementById('detailContent').innerHTML = postCardHTML(p, true);
+}
+
+/* ============================= RENDER: STATIC AVATAR SLOTS ============================= */
+function renderStaticAvatars(){
+  document.getElementById('profileAvatarSlot').innerHTML = avatarHTML('u/TuUsuario', 84);
+  document.getElementById('drawerAvatarSlot').innerHTML = avatarHTML('u/TuUsuario', 44);
+}
+
+/* ============================= RENDER ALL ============================= */
+function renderAll(){
+  renderStaticAvatars();
+  renderRecentChips();
+  renderCarousel();
+  renderFeed();
+  renderSearch();
+  renderCommunitiesScreen();
+  renderDrawerComm();
+  renderMessages();
+  renderNewPostSelect();
+  renderDarkSwitch();
+  renderMenuDot();
+  renderDetail();
+  document.getElementById('navBadge').style.display = state.unread>0 ? 'flex' : 'none';
+  document.getElementById('navBadge').textContent = state.unread;
+}
+
+/* ============================= NAVIGATION ============================= */
+function goScreen(name){
+  state.screen = name;
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>{
+    b.classList.toggle('active', b.dataset.screen === name);
+  });
+  const hideTop = (name==='detail');
+  document.getElementById('topbar').style.display = hideTop ? 'none' : 'flex';
+  document.getElementById('statusbar').style.display = hideTop ? 'none' : 'flex';
+  if(name === 'messages' && state.unread>0){
+    state.unread = 0;
+    notifications.forEach(n=>n.unread=false);
+    renderMessages();
+    document.getElementById('navBadge').style.display='none';
+  }
+  window.scrollTo(0,0);
+}
+
+/* ============================= ACTIONS ============================= */
+function addComment(postId){
+  const input = document.querySelector(`[data-comment-input="${postId}"]`);
+  const val = input.value.trim();
+  if(!val) return;
+  const p = posts.find(p=>p.id===postId);
+  p.comments.push({user:'u/TuUsuario', text:val});
+  p.commentsCount += 1;
+  input.value='';
+  if(state.screen==='detail') renderDetail(); else renderFeed();
+  toast('Comentario publicado');
+}
+
+function addRecentSearch(q){
+  q = q.trim();
+  if(!q) return;
+  state.recentSearches = [q, ...state.recentSearches.filter(x=>x.toLowerCase()!==q.toLowerCase())].slice(0,6);
+  renderRecentChips();
+}
+
+document.addEventListener('click', (e)=>{
+  const el = e.target.closest('[data-action]');
+  if(!el) return;
+  const action = el.dataset.action;
+
+  switch(action){
+    case 'nav':
+      goScreen(el.dataset.screen);
+      break;
+    case 'nav-drawer':
+      goScreen(el.dataset.screen);
+      closeDrawer();
+      break;
+    case 'go-profile':
+      goScreen('profile');
+      break;
+    case 'go-communities':
+      e.preventDefault();
+      goScreen('communities');
+      break;
+    case 'go-search':
+      document.getElementById('searchInput').removeAttribute('readonly');
+      goScreen('search');
+      setTimeout(()=>document.getElementById('searchInput').focus(),50);
+      break;
+    case 'mic-search':
+      toast('🎙️ Búsqueda por voz — función de ejemplo en este prototipo');
+      break;
+    case 'use-recent':
+      state.searchQuery = el.dataset.q;
+      document.getElementById('searchInput').value = el.dataset.q;
+      document.getElementById('searchInput').removeAttribute('readonly');
+      state.searchTab = 'publicaciones';
+      goScreen('search');
+      renderSearch();
+      addRecentSearch(el.dataset.q);
+      break;
+    case 'search-tab':
+      state.searchTab = el.dataset.tab;
+      goScreen('search');
+      document.getElementById('searchInput').removeAttribute('readonly');
+      renderSearch();
+      break;
+    case 'toggle-join':{
+      const id = el.dataset.id;
+      if(state.joined.has(id)){ state.joined.delete(id); toast(`Saliste de ${commName(id)}`); }
+      else { state.joined.add(id); toast(`Te uniste a ${commName(id)}`); }
+      renderAll();
+      break;
+    }
+    case 'vote':{
+      const id = Number(el.dataset.id);
+      const dir = Number(el.dataset.dir);
+      const p = posts.find(p=>p.id===id);
+      if(p.myVote === dir){ p.votes -= dir; p.myVote = 0; }
+      else{ p.votes += dir - p.myVote; p.myVote = dir; }
+      state.screen==='detail' ? renderDetail() : renderFeed();
+      break;
+    }
+    case 'open-detail':{
+      state.detailPostId = Number(el.dataset.id);
+      renderDetail();
+      goScreen('detail');
+      break;
+    }
+    case 'back-home':
+      goScreen('home');
+      break;
+    case 'share':{
+      window.__sharePostId = Number(el.dataset.id);
+      document.getElementById('shareOverlay').classList.add('open');
+      break;
+    }
+    case 'copy-link':{
+      const link = `https://reddit-prototipo.app/post/${window.__sharePostId}`;
+      if(navigator.clipboard){ navigator.clipboard.writeText(link).catch(()=>{}); }
+      closeOverlays();
+      toast('Enlace copiado al portapapeles');
+      break;
+    }
+    case 'share-generic':
+      closeOverlays();
+      toast('Función de ejemplo en este prototipo');
+      break;
+    case 'open-post-options':{
+      window.__optionsPostId = Number(el.dataset.id);
+      document.getElementById('postOptionsOverlay').classList.add('open');
+      break;
+    }
+    case 'toggle-save-from-options':{
+      const p = posts.find(p=>p.id===window.__optionsPostId);
+      if(p){ p.saved = !p.saved; toast(p.saved ? 'Guardado' : 'Eliminado de guardados'); }
+      closeOverlays();
+      break;
+    }
+    case 'hide-post-from-options':{
+      const idx = posts.findIndex(p=>p.id===window.__optionsPostId);
+      if(idx>-1){ posts.splice(idx,1); toast('Publicación eliminada'); renderFeed(); }
+      closeOverlays();
+      break;
+    }
+    case 'report-post-from-options':
+      toast('Gracias, hemos recibido tu reporte');
+      closeOverlays();
+      break;
+    case 'open-create':
+      document.getElementById('createOverlay').classList.add('open');
+      renderNewPostSelect();
+      break;
+    case 'publish-post':{
+      const commRaw = document.getElementById('newPostCommInput').value;
+      const comm = resolveCommunity(commRaw);
+      const title = document.getElementById('newPostTitle').value.trim();
+      if(!comm){ toast('Escribe una comunidad antes de publicar'); break; }
+      if(!title){ toast('Añade un título antes de publicar'); break; }
+      posts.unshift({
+        id: postIdCounter++, comm: comm.id, user:'u/TuUsuario', time:'ahora',
+        title, imgType:'user', votes:1, myVote:1, saved:false, commentsCount:0, comments:[]
+      });
+      document.getElementById('newPostTitle').value='';
+      document.getElementById('newPostBody').value='';
+      document.getElementById('newPostCommInput').value='';
+      closeOverlays();
+      goScreen('home');
+      renderAll();
+      toast('¡Publicado en ' + comm.name + '!');
+      break;
+    }
+    case 'close-overlays':
+      closeOverlays();
+      break;
+    case 'open-drawer':
+      document.getElementById('drawerOverlay').classList.add('open');
+      document.getElementById('drawer').classList.add('open');
+      state.menuNotif = false;
+      renderMenuDot();
+      break;
+    case 'close-drawer':
+      closeDrawer();
+      break;
+    case 'toggle-dark':
+      state.dark = !state.dark;
+      renderDarkSwitch();
+      break;
+    case 'noop-switch':
+      el.classList.toggle('on');
+      break;
+    case 'toggle-inline-comments':
+      break;
+    case 'popular-toast':
+      closeDrawer(); toast('Sección "Popular" — ejemplo en este prototipo');
+      break;
+    case 'explore-toast':
+      closeDrawer(); toast('Sección "Explorar" — ejemplo en este prototipo');
+      break;
+    case 'topic-toast':
+      toast('Función de ejemplo en este prototipo');
+      break;
+    case 'logout-toast':
+      toast('Esto es un prototipo — no cierra sesión de verdad 🙂');
+      break;
+  }
+});
+
+document.getElementById('searchInput').addEventListener('input', (e)=>{
+  state.searchQuery = e.target.value;
+  renderSearch();
+});
+document.getElementById('searchInput').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter' && e.target.value.trim()){
+    addRecentSearch(e.target.value.trim());
+  }
+});
+
+function closeOverlays(){
+  document.getElementById('shareOverlay').classList.remove('open');
+  document.getElementById('createOverlay').classList.remove('open');
+  document.getElementById('postOptionsOverlay').classList.remove('open');
+}
+function closeDrawer(){
+  document.getElementById('drawerOverlay').classList.remove('open');
+  document.getElementById('drawer').classList.remove('open');
+}
+
+/* ============================= LIVE CLOCK ============================= */
+function updateClock(){
+  const now = new Date();
+  let h = now.getHours(); const m = now.getMinutes();
+  const el = document.getElementById('clockTime');
+  if(el) el.textContent = `${h}:${m<10?'0':''}${m}`;
+}
+updateClock();
+setInterval(updateClock, 15000);
+
+/* ============================= INIT ============================= */
+renderAll();
+</script>
+</body>
+</html>
